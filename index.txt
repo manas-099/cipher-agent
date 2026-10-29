@@ -1,0 +1,188 @@
+cipher-agent/
+│
+├── app/
+│   └── src/
+│       ├── agent/
+│       │   ├── nodes/
+│       │   │   ├── planner_node.py       # plans what to do
+│       │   │   ├── tool_executor_node.py # executes tools
+│       │   │   ├── file_reader_node.py   # handles file reading logic
+│       │   │   └── verifier_node.py      # runs code, checks output
+│       │   ├── graph_builder.py          # builds langgraph graph
+│       │   └── agent.py                 # entry point for agent
+│       │
+│       ├── tools/
+│       │   ├── file_tools.py            # list, read, create, delete files/folders
+│       │   ├── search_tools.py          # grep_search, file_tree
+│       │   ├── execution_tools.py       # run_code, run_command
+│       │   └── tool_registry.py         # registers all tools in one place
+│       │
+│       ├── sandbox/
+│       │   ├── docker_runner.py         # spins up/kills docker containers
+│       │   └── Dockerfile.sandbox       # sandbox image definition
+│       │
+│       ├── model/
+│       │   └── my_llm_client/
+│       │       ├── client.py            # wraps Anthropic API calls
+│       │       └── token_counter.py     # chars/4 estimation logic
+│       │
+│       ├── api/
+│       │   ├── routes/
+│       │   │   ├── chat.py              # POST /chat endpoint
+│       │   │   └── health.py            # GET /health endpoint
+│       │   ├── dto/
+│       │   │   ├── request.py           # ChatRequest schema
+│       │   │   └── response.py          # ChatResponse schema
+│       │   └── middleware/
+│       │       ├── error_handler.py     # global exception handling
+│       │       └── request_logger.py    # logs every request
+│       │
+│       ├── prompt_library/
+│       │   ├── system_prompt.txt        # main agent system prompt
+│       │   ├── planner_prompt.txt       # prompt for planning node
+│       │   └── verifier_prompt.txt      # prompt for verification node
+│       │
+│       ├── config/
+│       │   ├── model_config.py          # model name, max tokens, temp
+│       │   ├── api_config.py            # FastAPI settings, CORS, port
+│       │   └── settings.py              # loads .env, single source of truth
+│       │
+│       ├── logger/
+│       │   └── logger.py               # structured logging setup
+│       │
+│       ├── exception/
+│       │   └── exceptions.py           # custom exception classes
+│       │
+│       └── main.py                      # FastAPI app entry point
+│
+├── client/
+│   ├── chat.py                          # terminal chat interface
+│   └── config.py                        # backend URL, settings
+│
+├── tests/
+│   ├── unit/
+│   │   ├── test_file_tools.py
+│   │   ├── test_search_tools.py
+│   │   └── test_docker_runner.py
+│   └── integration/
+│       └── test_agent_flow.py
+│
+├── evals/
+│   ├── test_cases/
+│   │   ├── create_calculator.json       # input + expected output
+│   │   └── fix_bug.json
+│   └── run_evals.py                     # runs all eval cases, scores them
+│
+├── .env                                 # ANTHROPIC_API_KEY, settings
+├── .env.example                         # template for others
+├── .gitignore
+├── requirements.txt
+├── docker-compose.yml                   # run everything with one command
+└── README.md
+
+
+
+
+-----
+
+
+i want factory methods
+
+like model config settings
+
+
+
+---------------
+
+Searched for "llm_factory"
+Viewed llm_factory.py:1-54
+Viewed llm_port.py:1-24
+Viewed settings.py:1-60
+
+This architecture follows **Clean Architecture / Hexagonal Architecture (Ports and Adapters)** along with the **Factory Design Pattern**. 
+
+Here is the breakdown of why each component exists and how they benefit your application:
+
+---
+
+### 1. `EnvSettings` / `LLMSettings` ([settings.py](file:///c:/Users/RentoBees/Desktop/AGNETIC/AGNETIC/agentic_rag_harness/apps/backend/src/rag_harness/config/settings.py))
+* **Centralized Configuration**: All keys, URLs, model names, and timeouts are read from `.env` in one place using `pydantic-settings`.
+* **Security & Secrets Isolation**: Sensitive tokens (`AUTH_TOKEN`, API keys) are never hardcoded in the codebase.
+* **Environment Independence**: You can easily switch configurations across Development, Staging, and Production by changing `.env` without modifying a single line of Python code.
+* **Type Safety & Validation**: Settings validate data types, default fallbacks, and URLs on startup rather than crashing deep inside an API call.
+
+---
+
+### 2. `LLMPort` ([llm_port.py](file:///c:/Users/RentoBees/Desktop/AGNETIC/AGNETIC/agentic_rag_harness/apps/backend/src/rag_harness/domain/ports/llm_port.py))
+* **The "Port" (Interface)**: `LLMPort` defines the abstract contract:
+  ```python
+  class LLMPort(ABC):
+      @abstractmethod
+      def generate(...) -> str: ...
+  ```
+* **Decoupling (Inversion of Control)**: The core business logic (agents, nodes, workflows) **only** depends on `LLMPort`, never on concrete third-party libraries or specific HTTP clients.
+* **Swappability**: Any backend can be used as long as it adheres to this interface.
+
+---
+
+### 3. `MyLLMClient` ([myllm_client.py](file:///c:/Users/RentoBees/Desktop/AGNETIC/AGNETIC/agentic_rag_harness/apps/backend/src/rag_harness/infrastructure/llm/myllm_client.py))
+* **The "Adapter"**: Implements `LLMPort` specifically for your custom/self-hosted LLM service.
+* **Encapsulation of Low-Level Details**: It manages connection pooling, HTTP request formatting, headers, JSON serialization, and specialized token decoding (such as XGrammar/structured output constraints).
+* **Isolation of Failures**: If your private LLM endpoint's API schema changes or requires custom headers, you only adjust [myllm_client.py](file:///c:/Users/RentoBees/Desktop/AGNETIC/AGNETIC/agentic_rag_harness/apps/backend/src/rag_harness/infrastructure/llm/myllm_client.py) without touching agent logic or other providers.
+
+---
+
+### 4. `LLMClientFactory` ([llm_factory.py](file:///c:/Users/RentoBees/Desktop/AGNETIC/AGNETIC/agentic_rag_harness/apps/backend/src/rag_harness/infrastructure/llm/llm_factory.py))
+* **Is this the Factory Method pattern?**
+  * Yes, it is an implementation of the **Factory Pattern** (specifically a *Simple/Static Factory* with Builder characteristics).
+* **What does it do?**
+  * Instead of each route or agent manually instantiating `MyLLMClient`, `OpenRouterClient`, `GroqFallbackClient`, and `MyLLMHealthMonitor`, [LLMClientFactory](file:///c:/Users/RentoBees/Desktop/AGNETIC/AGNETIC/agentic_rag_harness/apps/backend/src/rag_harness/infrastructure/llm/llm_factory.py#L21-L54) builds the entire fallback pipeline (`LLMChain`) in one step.
+* **Benefits**:
+  1. **Shared Resources**: Both the `agent_chain` and `generate_chain` share the same `MyLLMClient` and `MyLLMHealthMonitor` instances, preventing redundant health checks and connection waste.
+  2. **Single Responsibility**: Callers (`api/dependencies.py`) simply ask for the chains; they do not need to know how clients are wired together or fallback priorities configured.
+
+---
+
+### Summary Diagram: How They Fit Together
+
+```mermaid
+graph LR
+    subgraph Config
+        Settings[Settings / .env]
+    end
+
+    subgraph Factory
+        Factory[LLMClientFactory]
+    end
+
+    subgraph Domain ["Domain (Business Logic)"]
+        Port["<<interface>>\nLLMPort"]
+        Agent[Agent / Workflow Node]
+    end
+
+    subgraph Adapters ["Infrastructure (Adapters)"]
+        MyLLM[MyLLMClient]
+        Groq[GroqFallbackClient]
+        OpenRouter[OpenRouterClient]
+        Chain[LLMChain]
+    end
+
+    Settings --> Factory
+    Factory -->|Instantiates & wires| MyLLM
+    Factory -->|Instantiates & wires| Groq
+    Factory -->|Instantiates & wires| OpenRouter
+    Factory -->|Assembles| Chain
+
+    MyLLM -.->|Implements| Port
+    Groq -.->|Implements| Port
+    OpenRouter -.->|Implements| Port
+    Chain -.->|Implements| Port
+
+    Agent -->|Consumes| Port
+```
+
+* **Settings** provide the data.
+* **Factory** instantiates and connects the components.
+* **Clients (MyLLMClient, etc.)** handle provider-specific network communication.
+* **Port** guarantees your application remains decoupled from any specific LLM provider.
+
