@@ -1,3 +1,4 @@
+```text
 cipher-agent/
 │
 ├── app/
@@ -157,3 +158,5 @@ cipher-agent/
 ├── requirements.txt
 ├── docker-compose.yml
 └── README.md
+
+```
