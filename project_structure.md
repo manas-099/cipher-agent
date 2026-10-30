@@ -1,4 +1,5 @@
 ```text
+
 cipher-agent/
 │
 ├── app/
@@ -11,8 +12,8 @@ cipher-agent/
 │       │   │   ├── nodes/
 │       │   │   │   ├── base_node.py                   # abstract base node
 │       │   │   │   ├── planner_node.py                # plans the task
-│       │   │   │   ├── tool_executor_node.py           # executes tools
-│       │   │   │   ├── file_reader_node.py             # handles file reading
+│       │   │   │   ├── tool_executor_node.py          # executes tools
+│       │   │   │   ├── file_reader_node.py            # handles file reading
 │       │   │   │   └── verifier_node.py               # runs + checks output
 │       │   │   ├── node_factory.py                    # NodeFactory
 │       │   │   ├── node_registry.py                   # NodeRegistry
@@ -27,33 +28,40 @@ cipher-agent/
 │       │   │   ├── tool_factory.py                    # ToolFactory
 │       │   │   └── tool_registry.py                   # ToolRegistry
 │       │   │
-│       │   └── models/                                # domain models (NOT LLM)
+│       │   ├── memory/                                # MEMORY DOMAIN MODELS
+│       │   │   ├── working_memory.py                  # AgentState during task
+│       │   │   │                                      # files read, tool results
+│       │   │   │                                      # current plan, task context
+│       │   │   └── procedural_memory.py               # prompt loader
+│       │   │                                          # loads from prompt_library/
+│       │   │                                          # agent's HOW-TO knowledge
+│       │   │
+│       │   └── models/                                # DOMAIN DATA MODELS
 │       │       ├── chat_message.py                    # ChatMessage dataclass
 │       │       ├── tool_call.py                       # ToolCall dataclass
 │       │       ├── tool_result.py                     # ToolResult dataclass
 │       │       └── agent_state.py                     # AgentState dataclass
+│       │                                              # (working memory state)
 │       │
 │       │
 │       ├── ports/                                     # CONTRACTS / INTERFACES
-│       │   │                                          # domain defines what it needs
-│       │   │                                          # infrastructure implements it
-│       │   ├── i_llm_client.py                        # how domain talks to any LLM
-│       │   ├── i_sandbox.py                           # how domain runs code
-│       │   ├── i_file_system.py                       # how domain reads/writes files
-│       │   ├── i_chat_service.py                      # how API talks to domain
-│       │   └── i_agent_service.py                     # how agent is triggered
+│       │   │
+│       │   ├── outbound/                              # domain → outside world
+│       │   │   ├── llm_port.py                        # how domain talks to any LLM
+│       │   │   ├── sandbox_port.py                    # how domain runs code
+│       │   │   └── filesystem_port.py                 # how domain reads/writes files
+│       │   │
+│       │   └── inbound/                               # outside world → domain
+│       │       ├── chat_service_port.py               # how API triggers chat
+│       │       └── agent_service_port.py              # how API triggers agent
 │       │
 │       │
 │       ├── application/                               # USE CASES
-│       │   │                                          # orchestrates domain + ports
-│       │   │                                          # one file per use case
-│       │   ├── chat_service.py                        # implements i_chat_service
-│       │   └── agent_service.py                       # implements i_agent_service
+│       │   ├── chat_service.py                        # implements chat_service_port
+│       │   └── agent_service.py                       # implements agent_service_port
 │       │
 │       │
 │       ├── api/                                       # INBOUND ADAPTER
-│       │   │                                          # how outside world talks to app
-│       │   │                                          # only FastAPI code lives here
 │       │   ├── routes/
 │       │   │   ├── chat.py                            # POST /chat
 │       │   │   └── health.py                          # GET /health
@@ -73,16 +81,13 @@ cipher-agent/
 │       │
 │       │
 │       ├── infrastructure/                            # OUTBOUND ADAPTERS
-│       │   │                                          # implements ports
-│       │   │                                          # all external libs live here
 │       │   │
 │       │   ├── llm/                                   # LLM providers
 │       │   │   ├── base_llm_adapter.py                # abstract base
-│       │   │   ├── anthropic_adapter.py               # implements i_llm_client
-│       │   │   ├── openai_adapter.py                  # implements i_llm_client
+│       │   │   ├── anthropic_adapter.py               # implements llm_port
+│       │   │   ├── openai_adapter.py                  # implements llm_port
 │       │   │   ├── llm_factory.py                     # LLMFactory
 │       │   │   ├── llm_model_registry.py              # ModelRegistry
-│       │   │   │                                      # stores model configs/costs
 │       │   │   └── routing/                           # Strategy Pattern
 │       │   │       ├── base_routing_strategy.py       # abstract base strategy
 │       │   │       ├── complexity_strategy.py         # route by task complexity
@@ -93,38 +98,44 @@ cipher-agent/
 │       │   │
 │       │   ├── sandbox/                               # code execution
 │       │   │   ├── base_sandbox_adapter.py            # abstract base
-│       │   │   ├── python_sandbox.py                  # implements i_sandbox
-│       │   │   ├── node_sandbox.py                    # implements i_sandbox
-│       │   │   ├── bash_sandbox.py                    # implements i_sandbox
+│       │   │   ├── python_sandbox.py                  # implements sandbox_port
+│       │   │   ├── node_sandbox.py                    # implements sandbox_port
+│       │   │   ├── bash_sandbox.py                    # implements sandbox_port
 │       │   │   ├── sandbox_factory.py                 # SandboxFactory
 │       │   │   ├── docker_runner.py                   # shared docker logic
 │       │   │   └── Dockerfile.sandbox                 # sandbox image
 │       │   │
 │       │   └── filesystem/                            # file system access
-│       │       └── local_fs_adapter.py                # implements i_file_system
+│       │       └── local_fs_adapter.py                # implements filesystem_port
 │       │
 │       │
-│       ├── prompt_library/                            # PROMPTS
-│       │   ├── system_prompt.txt
-│       │   ├── planner_prompt.txt
-│       │   └── verifier_prompt.txt
+│       ├── prompt_library/                            # PROCEDURAL MEMORY STORE
+│       │   │                                          # agent's HOW-TO knowledge
+│       │   │                                          # loaded by procedural_memory.py
+│       │   ├── system_prompt.txt                      # main agent behaviour
+│       │   ├── planner_prompt.txt                     # how to plan a task
+│       │   └── verifier_prompt.txt                    # how to verify output
+│       │
 │       │
 │       ├── config/                                    # CONFIGURATION
 │       │   ├── model_config.py                        # model name, tokens, temp
 │       │   ├── api_config.py                          # FastAPI, CORS, port
 │       │   └── settings.py                            # loads .env, source of truth
 │       │
+│       │
 │       ├── logger/
 │       │   └── logger.py                              # structured logging
 │       │
+│       │
 │       ├── exception/
 │       │   └── exceptions.py                          # custom exceptions
+│       │
 │       │
 │       └── main.py                                    # FastAPI app entry point
 │
 │
 ├── client/                                            # TERMINAL CLIENT
-│   ├── chat.py                                        # chat interface
+│   ├── chat.py                                        # terminal chat interface
 │   └── config.py                                      # backend URL, settings
 │
 │
@@ -133,7 +144,8 @@ cipher-agent/
 │   │   ├── domain/
 │   │   │   ├── test_tool_registry.py
 │   │   │   ├── test_tool_factory.py
-│   │   │   └── test_node_factory.py
+│   │   │   ├── test_node_factory.py
+│   │   │   └── test_working_memory.py
 │   │   ├── infrastructure/
 │   │   │   ├── test_anthropic_adapter.py
 │   │   │   ├── test_docker_runner.py
@@ -159,4 +171,9 @@ cipher-agent/
 ├── docker-compose.yml
 └── README.md
 
+
+
+
+
 ```
+
