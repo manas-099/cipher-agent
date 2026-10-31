@@ -29,8 +29,8 @@ dependencies = [
     "uvicorn[standard]==0.32.1",
 ]
 
-[project.scripts]
-app = "app:main"
+[tool.uv]
+package = false
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
