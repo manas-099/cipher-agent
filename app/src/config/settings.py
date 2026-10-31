@@ -111,10 +111,18 @@ class SandboxSettings(_EnvBase):
     TIMEOUT_SECONDS:    int = 30
     MEMORY_LIMIT_MB:    int = 256
     CPU_LIMIT:          float = 1.0
+    PIDS_LIMIT:         int = 512
     NETWORK_DISABLED:   bool = True
-    IMAGE_PYTHON:       str = "python:3.11-slim"
+    NETWORK_NAME:       str = "bridge"
+    DROP_CAPABILITIES:  bool = True
+
+    IMAGE_PYTHON:       str = "python:3.12-slim"
     IMAGE_NODE:         str = "node:20-slim"
     IMAGE_BASH:         str = "ubuntu:22.04"
+    IMAGE_SANDBOX:      str = "cipher-sandbox:latest"
+
+    WORKSPACE_ROOT:     str = ""
+    MAX_OUTPUT_CHARS:   int = 100_000
 
 
 # ─────────────────────────────────────────────────────────────────────────────
