@@ -4,6 +4,7 @@
 # Application layer calls agent.run(task) and gets back a string.
 
 from __future__ import annotations
+from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING
 
 from app.src.domain.agent.nodes.graph_builder import build_graph
@@ -60,17 +61,29 @@ class CipherAgent:
         )
         initial_state.max_iterations = self._max_iterations
 
-        # LangGraph .invoke() runs the graph to completion
-        # returns the final AgentState after all nodes have run
-        final_state: AgentState = self._graph.invoke(initial_state)
+        # LangGraph .invoke() runs the graph to completion.
+        # It returns a plain dict for dataclass schemas, so normalise it back.
+        raw_state = self._graph.invoke(initial_state)
+        final_state = self._as_agent_state(raw_state)
 
         return AgentResult.from_state(final_state)
+
+    @staticmethod
+    def _as_agent_state(raw_state: object) -> AgentState:
+        if isinstance(raw_state, AgentState):
+            return raw_state
+        if not isinstance(raw_state, dict):
+            raise TypeError(
+                f"Unexpected graph output type: {type(raw_state).__name__}"
+            )
+        allowed = {field.name for field in fields(AgentState)}
+        return AgentState(
+            **{key: value for key, value in raw_state.items() if key in allowed}
+        )
 
 
 # ── result object returned to caller ──────────────────────────────────────────
 # keeps application layer decoupled from AgentState internals
-
-from dataclasses import dataclass
 
 @dataclass
 class AgentResult:
