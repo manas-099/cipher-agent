@@ -22,7 +22,10 @@ class ChatMessage:
     
     # only populated for tool result messages
     tool_call_id : str | None = field(default=None)
-    
+
+    # only populated for assistant messages that requested tool calls
+    tool_calls : list[dict[str, Any]] | None = field(default=None)
+
     # raw provider response if needed for debugging
     raw : dict[str, Any] | None = field(default=None, repr=False)
 
@@ -38,6 +41,18 @@ class ChatMessage:
     @classmethod
     def assistant(cls, content: str) -> ChatMessage:
         return cls(role=MessageRole.ASSISTANT, content=content)
+
+    @classmethod
+    def assistant_with_tool_calls(
+        cls,
+        content    : str,
+        tool_calls : list[dict[str, Any]],
+    ) -> ChatMessage:
+        return cls(
+            role       = MessageRole.ASSISTANT,
+            content    = content,
+            tool_calls = tool_calls,
+        )
 
     @classmethod
     def tool_result(cls, content: str, tool_call_id: str) -> ChatMessage:

@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 import asyncio
+import concurrent.futures
 import time
-from typing import Any, TYPE_CHECKING
+from collections.abc import Coroutine
+from typing import Any, TypeVar, TYPE_CHECKING
 
 from app.src.domain.agent.nodes.base_node import BaseNode
 from app.src.domain.models.agent_state import AgentState, AgentStatus
@@ -15,6 +17,18 @@ from app.src.domain.models.tool_result import ToolResult
 
 if TYPE_CHECKING:
     from app.src.domain.tools.base_tool import BaseTool
+
+T = TypeVar("T")
+
+
+def _run_coroutine_sync(coro: Coroutine[Any, Any, T]) -> T:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(asyncio.run, coro).result()
 
 
 class ToolNode(BaseNode):
@@ -49,7 +63,7 @@ class ToolNode(BaseNode):
             return {"status": AgentStatus.RUNNING}
 
         # run all pending tool calls in parallel
-        results = asyncio.run(self._execute_parallel(pending))
+        results = _run_coroutine_sync(self._execute_parallel(pending))
 
         # build tool result messages for LLM history
         tool_messages = [

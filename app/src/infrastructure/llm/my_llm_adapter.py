@@ -35,6 +35,22 @@ def _to_api_messages(messages: list[ChatMessage]) -> list[dict[str, Any]]:
                 "content"     : msg.content,
                 "tool_call_id": msg.tool_call_id,
             })
+        elif msg.role == MessageRole.ASSISTANT and msg.tool_calls:
+            result.append({
+                "role"      : "assistant",
+                "content"   : msg.content or None,
+                "tool_calls": [
+                    {
+                        "id"      : tc["id"],
+                        "type"    : "function",
+                        "function": {
+                            "name"     : tc["name"],
+                            "arguments": json.dumps(tc["arguments"]),
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ],
+            })
         else:
             result.append({
                 "role"   : msg.role.value,

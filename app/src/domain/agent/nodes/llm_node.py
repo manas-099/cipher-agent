@@ -52,13 +52,23 @@ class LLMNode(BaseNode):
                 ToolCall.create(
                     tool_name = tc["name"],
                     arguments = tc["arguments"],
+                    id        = tc.get("id") or None,
                 )
                 for tc in response.tool_calls
             ]
 
-            # add assistant message so history stays coherent
-            assistant_msg = ChatMessage.assistant(
-                content=response.content or ""
+            # assistant message must carry the tool_calls (and their ids)
+            # so the following tool messages can reference them
+            assistant_msg = ChatMessage.assistant_with_tool_calls(
+                content    = response.content or "",
+                tool_calls = [
+                    {
+                        "id"       : tc.id,
+                        "name"     : tc.tool_name,
+                        "arguments": tc.arguments,
+                    }
+                    for tc in tool_calls
+                ],
             )
 
             return {

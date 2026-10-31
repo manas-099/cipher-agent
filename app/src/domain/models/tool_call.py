@@ -39,5 +39,14 @@ class ToolCall:
     def is_failed(self)    -> bool: return self.status == ToolCallStatus.FAILED
 
     @classmethod
-    def create(cls, tool_name: str, arguments: dict[str, Any]) -> ToolCall:
-        return cls(tool_name=tool_name, arguments=arguments)
+    def create(
+        cls,
+        tool_name : str,
+        arguments : dict[str, Any],
+        id        : str | None = None,
+    ) -> ToolCall:
+        return cls(
+            tool_name = tool_name,
+            arguments = arguments,
+            id        = id or str(uuid.uuid4()),
+        )

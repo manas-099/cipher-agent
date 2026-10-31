@@ -85,7 +85,6 @@ class AgentState:
     def create(cls, task: str, system_prompt: str | None = None) -> AgentState:
         state = cls(task=task, status=AgentStatus.RUNNING)
         if system_prompt:
-            from app.src.domain.models.chat_message import ChatMessage
             state.messages.append(ChatMessage.system(system_prompt))
         state.messages.append(ChatMessage.user(task))
         return state

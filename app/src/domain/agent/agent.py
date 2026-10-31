@@ -6,7 +6,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from app.src.domain.agent.graph_builder import build_graph
+from app.src.domain.agent.nodes.graph_builder import build_graph
 from app.src.domain.agent.nodes.llm_node import LLMNode
 from app.src.domain.agent.nodes.tool_node import ToolNode
 from app.src.domain.models.agent_state import AgentState, AgentStatus
