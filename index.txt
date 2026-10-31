@@ -1,4 +1,18 @@
-cipher-agent/
+c
+
+ # pyrefly: ignore[missing-import]
+
+
+ Domain        →    Port          →    Adapter
+(what it needs)    (the contract)     (actual implementation)
+
+LLMNode       →    LLMPort       →    AnthropicAdapter
+ToolNode      →    SandboxPort   →    PythonSandbox
+FileTool      →    FilesystemPort→    LocalFSAdapter
+
+----
+
+ipher-agent/
 │
 ├── app/
 │   └── src/
